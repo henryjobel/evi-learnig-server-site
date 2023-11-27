@@ -44,6 +44,7 @@ const client = new MongoClient(process.env.DB_URI, {
 async function run() {
   try {
     const usersCollection = client.db('evoLearn').collection('users')
+    const coursesCollection = client.db('evoLearn').collection('courses')
     // auth related api
     app.post('/jwt', async (req, res) => {
       const user = req.body
@@ -92,6 +93,18 @@ async function run() {
         },
         options
       )
+      res.send(result)
+    })
+
+
+    // get all courses
+    app.get('/courses', async (req,res)=>{
+      const result = await coursesCollection.find().toArray()
+      res.send(result)
+    })
+    // fet single cpurses
+    app.get('/courses', async (req,res)=>{
+      const result = await coursesCollection.find().toArray()
       res.send(result)
     })
 
