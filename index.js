@@ -3,7 +3,7 @@ const app = express()
 require('dotenv').config()
 const cors = require('cors')
 const cookieParser = require('cookie-parser')
-const { MongoClient, ServerApiVersion } = require('mongodb')
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb')
 const jwt = require('jsonwebtoken')
 const morgan = require('morgan')
 const port = process.env.PORT || 5000
@@ -102,9 +102,17 @@ async function run() {
       const result = await coursesCollection.find().toArray()
       res.send(result)
     })
-    // fet single cpurses
-    app.get('/courses', async (req,res)=>{
-      const result = await coursesCollection.find().toArray()
+    // add one couses in database
+    app.post('/courses', verifyToken , async (req,res)=>{
+      const courses = req.body
+      const result = await coursesCollection.insertOne(courses)
+      res.send(result)
+    })
+    // get single cpurses
+    app.get('/courses/:id', async (req,res)=>{
+      const id = req.params.id
+      const sinleCourse = {_id: new ObjectId(id)}
+      const result = await coursesCollection.findOne(sinleCourse)
       res.send(result)
     })
 
