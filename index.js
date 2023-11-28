@@ -115,6 +115,12 @@ async function run() {
       const result = await coursesCollection.findOne(sinleCourse)
       res.send(result)
     })
+    // get course for teacher
+    app.get('/course/:email',async(req,res)=>{
+      const email = req.params.email
+      const result = await coursesCollection.find({'teacher.email': email}).toArray()
+      res.send(result)
+    })
 
     // Send a ping to confirm a successful connection
     await client.db('admin').command({ ping: 1 })
