@@ -97,6 +97,14 @@ async function run() {
     })
 
 
+    // student role
+
+    app.get('/user/:email', async (req,res)=>{
+      const email = req.params.email
+      const result = await usersCollection.findOne({email})
+      res.send(result)
+    })
+
     // get all courses
     app.get('/courses', async (req,res)=>{
       const result = await coursesCollection.find().toArray()
