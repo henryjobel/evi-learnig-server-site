@@ -46,6 +46,7 @@ async function run() {
     const usersCollection = client.db('evoLearn').collection('users')
     const coursesCollection = client.db('evoLearn').collection('courses')
     const coursesEnrollCollection = client.db('evoLearn').collection('enrollCollection')
+    const feedBackCollection = client.db('evoLearn').collection('feedback')
     // auth related api
     app.post('/jwt', async (req, res) => {
       const user = req.body
@@ -98,7 +99,56 @@ async function run() {
     })
 
 
-    // student role
+    app.get('/users',verifyToken, async(req,res)=>{
+      const result = await usersCollection.find().toArray()
+      res.send(result)
+    })
+    // user role update
+    app.put('/users/update/:email',verifyToken, async(req,res)=>{
+      const email = req.params.email
+      const user = req.body
+      const query = { email: email }
+      const updateDoc = {
+        $set : {
+          ...user,
+        timestamp: Date.now(),
+        },
+      }
+      const result = await usersCollection.updateOne(query,updateDoc)
+      res.send(result)
+
+    })
+    // beacome a teacher
+    app.put('/users/:email', async (req, res) => {
+      const email = req.params.email
+      const user = req.body
+      const query = { email: email }
+      const options = { upsert: true }
+      const isExist = await usersCollection.findOne(query)
+      console.log('User found?----->', isExist)
+      if (isExist){
+        if(user?.status === 'Requsted'){
+          const result = await usersCollection.updateOne(
+            query,{
+              $set: user,
+            }
+          )
+          return res.send(result)
+        }
+        else{
+          return res.send(isExist)
+        }
+      }
+      const result = await usersCollection.updateOne(
+        query,
+        {
+          $set: { ...user, timestamp: Date.now() },
+        },
+        options
+      )
+      res.send(result)
+    })
+
 
     app.get('/user/:email', async (req,res)=>{
       const email = req.params.email
@@ -109,6 +159,10 @@ async function run() {
     // get all courses
     app.get('/courses', async (req,res)=>{
       const result = await coursesCollection.find().toArray()
+      res.send(result)
+    })
+    app.get('/feedback', async (req,res)=>{
+      const result = await feedBackCollection.find().toArray()
       res.send(result)
     })
     // add one couses in database
@@ -162,6 +216,68 @@ async function run() {
       const query = {'student.email' : email}
       const result = await coursesEnrollCollection.find(query).toArray()
     res.send(result)
+    })
+
+    app.get('/admin-stats', async(req,res) =>{
+      const users = await usersCollection.estimatedDocumentCount()
+      const coursesItems = await coursesCollection.estimatedDocumentCount()
+      const payments = await coursesEnrollCollection.estimatedDocumentCount()
+      const result = await coursesEnrollCollection.aggregate([
+        {
+          $group: {
+            _id: null,
+            totalRevenue: {
+              $sum: '$price'
+            }
+          }
+        }
+      ]).toArray()
+      const revenue = result.length > 0 ? result[0].totalRevenue : 0 ;
+      res.send({
+        users,
+        coursesItems,
+        payments,
+        revenue
+
+        
+      })
+    }),
+    // purches satats
+    app.get('/order-stats', async(req, res) =>{
+      const result = await coursesEnrollCollection.aggregate([
+        {
+          $unwind: '$courses'
+        },
+        {
+          $lookup: {
+            from: 'courses',
+            localField: 'courses',
+            foreignField: '_id',
+            as: 'menuItems'
+          }
+        },
+        {
+          $unwind: '$courses'
+        },
+        {
+          $group: {
+            _id: '$courses.category',
+            quantity:{ $sum: 1 },
+            revenue: { $sum: '$courses.price'} 
+          }
+        },
+        {
+          $project: {
+            _id: 0,
+            category: '$_id',
+            quantity: '$quantity',
+            revenue: '$revenue'
+          }
+        }
+      ]).toArray();
+
+      res.send(result);
+
     })
 
     // Send a ping to confirm a successful connection
