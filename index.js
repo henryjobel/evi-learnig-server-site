@@ -160,7 +160,7 @@ async function run() {
       const email = req.query.email
       if(!email) return res.send([])
       const query = {'student.email' : email}
-      const result = await coursesCollection.find(query).toArray()
+      const result = await coursesEnrollCollection.find(query).toArray()
     res.send(result)
     })
 
