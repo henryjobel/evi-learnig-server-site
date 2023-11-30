@@ -7,7 +7,7 @@ const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb')
 const jwt = require('jsonwebtoken')
 const morgan = require('morgan')
 const port = process.env.PORT || 5000
-
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY)
 // middleware
 const corsOptions = {
   origin: ['http://localhost:5173', 'http://localhost:5174'],
@@ -45,6 +45,7 @@ async function run() {
   try {
     const usersCollection = client.db('evoLearn').collection('users')
     const coursesCollection = client.db('evoLearn').collection('courses')
+    const coursesEnrollCollection = client.db('evoLearn').collection('enrollCollection')
     // auth related api
     app.post('/jwt', async (req, res) => {
       const user = req.body
@@ -128,6 +129,39 @@ async function run() {
       const email = req.params.email
       const result = await coursesCollection.find({'teacher.email': email}).toArray()
       res.send(result)
+    })
+
+    // [payment releted]
+    app.post("/create-payment-intent",verifyToken, async (req, res) => {
+      const { price } = req.body;
+      const amount = parseInt(price * 100)
+      console.log(amount , 'this is amount')
+    
+      
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: amount,
+        currency: "usd",
+        payment_method_types: ['card']
+      });
+    
+      res.send({
+        clientSecret: paymentIntent.client_secret,
+      });
+    });
+
+    // save enroll collection
+    app.post('/payments', verifyToken , async (req,res)=>{
+      const payments = req.body
+      const result = await coursesEnrollCollection.insertOne(payments)
+      res.send(result)
+    })
+
+    app.get('/payments',verifyToken, async (req,res)=>{
+      const email = req.query.email
+      if(!email) return res.send([])
+      const query = {'student.email' : email}
+      const result = await coursesCollection.find(query).toArray()
+    res.send(result)
     })
 
     // Send a ping to confirm a successful connection
